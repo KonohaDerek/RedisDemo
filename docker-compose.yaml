@@ -1,0 +1,68 @@
+version: '3.9'
+
+services:
+  redis-master:
+    image: redis/redis-stack
+    container_name: master
+    restart: always
+    ports:
+      - 6390:6379
+      - 8001:8001
+    volumes:
+      - ./redis-master/data:/data
+      - ./redis-master/redis.conf:/redis-stack.conf
+    networks:
+      redis-replication:
+        ipv4_address: 172.25.0.101
+
+  slave1:
+    image: redis/redis-stack-server
+    container_name: slave1
+    restart: always
+    ports:
+      - 6391:6379
+    depends_on:
+      - redis-master
+    volumes:
+      - ./redis-slave1/data:/data
+      - ./redis-slave1/redis.conf:/redis-stack.conf
+    networks:
+      redis-replication:
+        ipv4_address: 172.25.0.102
+
+  slave2:
+    image: redis/redis-stack-server
+    container_name: slave2
+    restart: always
+    ports:
+      - 6392:6379
+    depends_on:
+      - redis-master
+    volumes:
+      - ./redis-slave2/data:/data
+      - ./redis-slave2/redis.conf:/redis-stack.conf
+    networks:
+      redis-replication:
+        ipv4_address: 172.25.0.103
+
+  sentinel1:
+    image: bitnami/redis-sentinel
+    container_name: sentinel1
+    restart: always
+    environment:
+      - REDIS_MASTER_HOST=master
+      - REDIS_MASTER_PORT_NUMBER=6379
+      - REDIS_SENTINEL_DOWN_AFTER=5000
+      - REDIS_SENTINEL_FAILOVER_TIMEOUT=5000
+    depends_on:
+      - redis-master
+    networks:
+      redis-replication:
+        ipv4_address: 172.25.0.104
+
+networks:
+  redis-replication:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.25.0.0/24
